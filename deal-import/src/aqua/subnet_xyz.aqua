@@ -1,0 +1,8 @@
+aqua SubnetXYZ declares *
+
+service MyService("myService"):
+  greeting(name: string) -> string
+
+func deal_id() -> string:
+    dealId="49fd250574ea2ab4a31f4aa8a6a34962a7319933"
+    <- dealId

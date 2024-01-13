@@ -1,0 +1,80 @@
+aqua Main
+
+import "@fluencelabs/aqua-lib/builtin.aqua"
+import "@fluencelabs/aqua-lib/subnet.aqua"
+
+use "deals.aqua"
+use "hosts.aqua"
+import "services.aqua"
+
+use "subnet_xyz.aqua"
+
+export list_subnet_services, run_xyz_greeting
+
+data SubnetService:
+    host_id: string
+    worker_id: ?string
+    services: ?[]string
+
+-- should be a lib function
+func get_subnet(deald_id:string) -> SubnetResolveResult:
+    on HOST_PEER_ID:
+        subnet <- Subnet.resolve(deald_id)
+        -- Console.print(["Failed to resolve subnet: ", subnet.success])
+    <- subnet
+
+-- should be a lib function
+func get_subnet_services(deal_id: string) -> []SubnetService:    
+    subnet <- get_subnet(deal_id)
+    if subnet.success == false:
+        Console.print(["Failed to resolve subnet: ", subnet.error])
+
+    services: *SubnetService
+    for w <- subnet.workers:
+        if w.worker_id != nil:
+            on w.worker_id! via w.host_id:
+                -- get list of all services on this worker
+                srvs <- Srv.list()
+
+                -- gather aliases
+                aliases: *string
+                for s <- srvs:
+                    if s.aliases.length != 0:
+                        aliases <<- s.aliases[0]
+
+                services <<- SubnetService(host_id=w.host_id, worker_id=w.worker_id, services=?[aliases])
+        else:
+            services <<- SubnetService(host_id=w.host_id, worker_id=nil, services=nil)
+
+    <- services
+
+-- should be templated
+func list_subnet_services() -> []SubnetService:
+    xyz_deal_id <- SubnetXYZ.deal_id()
+    <- get_subnet_services(xyz_deal_id)
+
+data GreetingResult:
+    stdout: string
+    stderr: string
+
+func subnet_greetings(subnet: SubnetResolveResult, func_param: string) -> []GreetingResult:
+    results: *GreetingResult        
+    if subnet.success == true:
+        for w <- subnet.workers:
+            if w.worker_id == nil:
+                results <<- GreetingResult(stdout="", stderr="missing worker id")
+            else:
+                on w.worker_id! via w.host_id:
+                    result <- SubnetXYZ.MyService.greeting(func_param)
+                    results <<- GreetingResult(stdout=result, stderr=w.worker_id!)
+    else:
+        Console.print(["Failed to resolve subnet: ", subnet.error])
+    
+    <- results
+
+
+func run_xyz_greeting(greeting_param: string) -> []GreetingResult:
+    xyz_deal_id <- SubnetXYZ.deal_id()
+    subnet <- get_subnet(xyz_deal_id)
+    results <- subnet_greetings(subnet, greeting_param)
+    <- results
