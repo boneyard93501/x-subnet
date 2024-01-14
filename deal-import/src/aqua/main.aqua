@@ -57,7 +57,7 @@ data GreetingResult:
     stdout: string
     stderr: string
 
-func subnet_greetings(subnet: SubnetResolveResult, func_param: string) -> []GreetingResult:
+func subnet_greeting(subnet: SubnetResolveResult, func_param: string) -> []GreetingResult:
     results: *GreetingResult        
     if subnet.success == true:
         for w <- subnet.workers:
@@ -76,5 +76,5 @@ func subnet_greetings(subnet: SubnetResolveResult, func_param: string) -> []Gree
 func run_xyz_greeting(greeting_param: string) -> []GreetingResult:
     xyz_deal_id <- SubnetXYZ.deal_id()
     subnet <- get_subnet(xyz_deal_id)
-    results <- subnet_greetings(subnet, greeting_param)
+    results <- subnet_greeting(subnet, greeting_param)
     <- results
